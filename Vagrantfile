@@ -4,6 +4,7 @@ def chef_cloud_attributes(instance_type)
   
   @app = {}
   @app[:name] = 'app'
+  @app[:sever_port] = 80
   
   @rails_env = 'development'
   
@@ -21,7 +22,7 @@ def chef_cloud_attributes(instance_type)
     :chef => { :roles => ['vagrant', 'app', 'database', 'sphinx'] },
     :ubuntu => { :servers => [
                                {:ip => '127.0.0.1', :fqdn => @app[:url], :alias => @app[:name]},
-                               {:ip => '127.0.1.1', :fqdn => 'lucid64.vagrant.', :alias => 'lucid64'},
+                               {:ip => '127.0.1.1', :fqdn => 'vagrant-lucid64.vagrantup.com', :alias => 'vagrant-lucid64'},
                                {:ip => '127.0.0.1', :fqdn => "database.#{@app[:name]}.#{@app[:server_type]}.internal", :alias => 'database'},
                                {:ip => '127.0.0.1', :fqdn => "sphinx.#{@app[:name]}.#{@app[:server_type]}.internal",   :alias => 'sphinx'},
                                {:ip => '127.0.0.1', :fqdn => "app.#{@app[:name]}.#{@app[:server_type]}.internal",      :alias => 'app'}
@@ -31,22 +32,21 @@ def chef_cloud_attributes(instance_type)
                   :users => { :accounts => {} }
                },
     :app => { :root_dir => "/var/www/apps/#{@app[:name]}", :app_name => @app[:name], :url => @app[:url] },
-    :server => { :name => 'dsp-production' },
+    :server => { :name => "#{@app[:name]}_#{@rails_env}" },
     :authorization => { :sudo => { :groups => ['admin'], :users => ['vagrant'] } },
     :ruby => { :version => 'ree' },
     :apache => {
-                  :listen_ports   => [ @app[:server_port] ],
                   :vhost_port     => @app[:server_port],
                   :vhosts         => [
                                         { :server_name    => @app[:url],
                                           :server_aliases => '',
-                                          :docroot        => "/var/www/apps/#{@app[:name]}/current/public",
+                                          :docroot        => "/var/www/apps/#{@app[:name]}/public",
                                           :name           => @app[:url]
                                         }
                                      ], 
                   :server_name    => @app[:url],
                   :web_dir        => '/var/www',
-                  :docroot        => "/var/www/apps/#{@app[:name]}/current/public",
+                  :docroot        => "/var/www/apps/#{@app[:name]}/public",
                   :name           => @app[:name],
                   :enable_mods    => ["rewrite", "deflate", "expires"],
                   :prefork => {
@@ -61,11 +61,11 @@ def chef_cloud_attributes(instance_type)
                 :version      => '2.3.8',
                 :using_shared => false,
                 :app_root_dir => "/var/www/apps/#{@app[:name]}",
-                :db_directory => "/var/www/apps/#{@app[:name]}/shared"
+                :db_directory => "/var/www/apps/#{@app[:name]}"
               },
     :mysql  => {
                 :bind_address           => "database.#{@app[:name]}.#{@app[:server_type]}.internal",
-                :database_name          => "dsp_#{@rails_env}",
+                :database_name          => "#{@app[:name]}_#{@rails_env}",
                 :server_root_password   => '',
                 :server_repl_password   => '',
                 :server_debian_password => '',
@@ -107,7 +107,7 @@ Vagrant::Config.run do |config|
   # Share an additional folder to the guest VM. The first argument is
   # an identifier, the second is the path on the guest to mount the
   # folder, and the third is the path on the host to the actual folder.
-  config.vm.share_folder("app-data", "/var/www/apps/app_name", ".")
+  config.vm.share_folder("app-data", "/var/www/apps/app", ".")
 
   # Enable provisioning with chef solo, specifying a cookbooks path (relative
   # to this Vagrantfile), and adding some recipes and/or roles.
